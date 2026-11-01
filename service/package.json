@@ -1,0 +1,1 @@
+{"name":"galia-leads-service","private":true,"type":"module","scripts":{"build":"node build.mjs"}}
