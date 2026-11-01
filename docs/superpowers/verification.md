@@ -1,5 +1,18 @@
 # Verification — 2026-11-01
 
+## Password login update
+
+User explicitly replaced ChatGPT sign-in with ordinary username/password. Native environment revision 3 configures `ADMIN_LOGIN` and secret `ADMIN_PASSWORD_HASH`; the old `ADMIN_EMAIL` was removed. Sites version 3 is deployed successfully with migration `0001_admin_sessions`.
+
+- Full suite: 25/25 passed, including actual SQLite session storage, wrong passwords, session rotation, expiration, logout revocation, credential rotation, origin/CSRF denial, throttling, private lead read/update/delete, and compiled Worker syntax.
+- Independent security review found no Critical or Important issues; suggested origin/rotation tests were added.
+- Real browser check on the published service passed: local login page, rejected wrong password, correct login, private request listing, status update, deletion of the temporary test record, session persistence on reload, logout, denial of a copied old session (401), zero runtime errors. No ChatGPT login was needed.
+- Browser testing caught a `Referrer-Policy: no-referrer` interaction that set the form POST Origin to null. Replaced with `same-origin`; complete browser flow then passed locally and in production.
+- Package test caught replacement-string metacharacters in embedded source. Build uses replacement callbacks; the compiled Worker is verified before publication.
+- Sessions: random 256-bit tokens; only SHA-256 hashes stored in D1; 12-hour expiry; HttpOnly/Secure host-only cookie. SameSite=Lax permits following a link from the public website while authenticated; mutating routes additionally require exact Origin. Actual password is delivered only in chat, absent from source and public assets.
+
+The original account-based verification below is historical and superseded by this update.
+
 ## Result
 
 Published: https://shanation6.github.io/galia-espanol/

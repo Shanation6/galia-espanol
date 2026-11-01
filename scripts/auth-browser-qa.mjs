@@ -1,0 +1,23 @@
+import assert from 'node:assert/strict';
+import {mkdir} from 'node:fs/promises';
+import {TEST_PASSWORD} from '../tests/fixtures.mjs';
+async function privateInput(){process.stdout.write('Ready for private test credentials on stdin (input is hidden).\n');const raw=process.stdin.isTTY;if(raw)process.stdin.setRawMode(true);process.stdin.resume();return new Promise((resolve,reject)=>{let value='';const receive=chunk=>{value+=chunk.toString();if(/[\r\n]/.test(value)){process.stdin.removeListener('data',receive);if(raw)process.stdin.setRawMode(false);process.stdin.pause();try{resolve(JSON.parse(value.trim()));}catch{reject(Error('Unable to read private credentials.'));}}};process.stdin.on('data',receive);});}
+const credentials=process.argv.includes('--private-input')?await privateInput():{username:'owner@example.com',password:TEST_PASSWORD};
+const base=process.env.AUTH_URL||'http://127.0.0.1:4184';
+const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
+const browser=await chromium.launch({headless:true,...(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{})});
+const page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];page.on('pageerror',e=>errors.push(e.message));await mkdir('outputs',{recursive:true});
+await page.goto(base+'/admin/');assert.equal(new URL(page.url()).pathname,'/admin/');assert.ok(await page.locator('#password').isVisible());
+await page.screenshot({path:'outputs/password-login.png'});
+await page.fill('#username',credentials.username);await page.fill('#password','incorrect-password');await page.getByRole('button',{name:'Войти в кабинет'}).click();assert.match(await page.locator('[role="alert"]').innerText(),/Неверный логин или пароль/);
+await page.fill('#username',credentials.username);await page.fill('#password',credentials.password);await page.getByRole('button',{name:'Войти в кабинет'}).click();await page.getByRole('heading',{name:'Заявки на занятия'}).waitFor();await page.locator('#message').filter({hasText:'Обновлено'}).waitFor();
+const cookies=await page.context().cookies(),session=cookies.find(c=>c.name==='__Host-galia_session');assert.ok(session&&session.httpOnly&&session.secure);const originalSession=session.name+'='+session.value;
+assert.equal(await page.evaluate(()=>document.cookie.includes('__Host-galia_session')),false);
+const result=await page.evaluate(async()=>{const r=await fetch('/api/leads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:'QA auth verification',contact:'qa-auth@example.com',goal:'travel',level:'zero',note:'Temporary auth test',source:'auth-migration-qa',consent:true,requestId:crypto.randomUUID()})});if(!r.ok)throw Error('QA request creation failed '+r.status);return await r.json();});
+await page.getByRole('button',{name:'Обновить',exact:true}).click();const row=page.locator('tbody tr').filter({hasText:'QA auth verification'});await row.getByRole('button',{name:'Открыть'}).click();await page.selectOption('#edit-status','scheduled');await page.fill('#edit-note','QA verification');await page.locator('#save-detail').click();await page.locator('#detail-dialog').waitFor({state:'hidden'});assert.match(await row.innerText(),/Урок согласован/);
+await page.screenshot({path:'outputs/password-admin.png'});
+await row.getByRole('button',{name:'Открыть'}).click();page.once('dialog',dialog=>dialog.accept());await page.locator('#delete-lead').click();await page.locator('#detail-dialog').waitFor({state:'hidden'});assert.equal(await page.locator('tbody tr').filter({hasText:'QA auth verification'}).count(),0);
+await page.reload();await page.getByRole('heading',{name:'Заявки на занятия'}).waitFor();
+await page.getByRole('button',{name:'Выйти',exact:true}).click();await page.locator('#password').waitFor({state:'visible'});
+const denied=await page.context().request.get(base+'/api/leads',{headers:{Cookie:originalSession}});assert.equal(denied.status(),401);
+assert.deepEqual(errors,[]);await browser.close();console.log(JSON.stringify({login:'passed',privateRead:'passed',statusUpdate:'passed',testDeletion:'passed',persistentSession:'passed',logoutRevocation:'passed',chatgptRequired:false,runtimeErrors:errors.length}));

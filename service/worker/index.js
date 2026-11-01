@@ -1,3 +1,5 @@
+import {isOwner,authRoute,loginPage} from './auth.js';
+export {isOwner} from './auth.js';
 const SERVICE='https://galia-espanol-studio.micsonwilktaywilsamu.chatgpt.site';
 const ADMIN_HTML='__ADMIN_HTML__';
 const STATUSES=['new','contacted','scheduled','enrolled','archived'];
@@ -5,7 +7,6 @@ const GOALS=['start','travel','speak','sound'];
 const LEVELS=['zero','beginner','continue','unsure'];
 export function allowedOrigin(origin){return origin==='https://shanation6.github.io'||origin===SERVICE||/^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin||'');}
 export function validStatus(value){return STATUSES.includes(value);}
-export function isOwner(request,env){return Boolean(env.ADMIN_EMAIL&&request.headers.get('oai-authenticated-user-id')&&request.headers.get('oai-authenticated-user-email')?.toLowerCase()===env.ADMIN_EMAIL.toLowerCase());}
 function textField(value,max,required=false){if(typeof value!=='string'||value.trim().length>max||(required&&!value.trim()))throw new Error('Проверьте заполненные поля.');return value.trim();}
 export function validateLead(value){
  if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('Некорректная заявка.');
@@ -25,6 +26,7 @@ export default {async fetch(request,env){
  try{
   if(request.method==='OPTIONS')return new Response(null,{status:allowedOrigin(request.headers.get('Origin'))?204:403,headers:{...headers,'Access-Control-Allow-Methods':'POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type','Access-Control-Max-Age':'600'}});
   if(path==='/api/health')return json({ok:true});
+  const authResponse=await authRoute(request,env);if(authResponse)return authResponse;
   if(path==='/api/leads'&&request.method==='POST'){
    if(!allowedOrigin(request.headers.get('Origin')))return json({error:'Источник запроса не разрешён.'},403);
    if(!request.headers.get('Content-Type')?.startsWith('application/json'))return json({error:'Нужен JSON.'},415,headers);
@@ -48,7 +50,7 @@ export default {async fetch(request,env){
    return json({id:saved.id,accepted:true},201,headers);
   }
   if(path.startsWith('/api/leads')){
-   if(!isOwner(request,env))return json({error:'Войдите в аккаунт владельца.'},request.headers.get('oai-authenticated-user-id')?403:401);
+   if(!await isOwner(request,env))return json({error:'Войдите в кабинет по логину и паролю.'},401);
    if(path==='/api/leads'&&request.method==='GET'){
     const {results}=await env.DB.prepare('SELECT id,name,contact,goal,level,note,source,status,admin_note,created_at,updated_at FROM leads ORDER BY created_at DESC LIMIT 1000').all();return json({leads:results});
    }
@@ -66,8 +68,8 @@ export default {async fetch(request,env){
    return json({error:'Не найдено.'},404);
   }
   if(path==='/admin'||path==='/admin/'){
-   if(!request.headers.get('oai-authenticated-user-id'))return Response.redirect(url.origin+'/signin-with-chatgpt?return_to=%2Fadmin%2F',302);
-   if(!isOwner(request,env))return new Response('<html lang="ru"><meta charset="utf-8"><h1>Нет доступа</h1><p>Кабинет доступен только владельцу сайта.</p><a href="/signout-with-chatgpt?return_to=%2Fadmin%2F">Сменить аккаунт</a></html>',{status:403,headers:safeHeaders});
+   if(request.method!=='GET')return new Response(null,{status:405,headers:{Allow:'GET'}});
+   if(!await isOwner(request,env))return loginPage();
    return new Response(ADMIN_HTML,{headers:safeHeaders});
   }
   return Response.redirect('https://shanation6.github.io/galia-espanol/',302);
