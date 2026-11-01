@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
+const browser=await chromium.launch({headless:true,...(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{})});
+const page=await browser.newPage({viewport:{width:1440,height:1000}});
+const errors=[];page.on('pageerror',e=>errors.push(e.message));
+const url='https://shanation6.github.io/galia-espanol/';
+const response=await page.goto(url);assert.equal(response.status(),200);await page.evaluate(()=>document.fonts.ready);
+await page.screenshot({path:'outputs/live-desktop.png'});
+assert.equal(await page.locator('h1').count(),1);
+assert.equal(await page.locator('img[alt*="Галя"]').evaluate(e=>e.complete&&e.naturalWidth>0),true);
+await page.locator('input[name="goal"][value="travel"]').check();await page.selectOption('#level','zero');await page.locator('#next-step').click();
+await page.fill('#name','QA live website');await page.fill('#contact','qa-live-check@example.com');await page.fill('#note','TEST RECORD - GitHub Pages verification');await page.locator('input[name="consent"]').check();
+const receipt=page.waitForResponse(r=>r.url().endsWith('/api/leads')&&r.request().method()==='POST');
+await page.locator('#submit-lead').click();const saved=await receipt;assert.equal(saved.status(),201);await page.locator('#form-success').waitFor({state:'visible'});const data=await saved.json();assert.equal(data.accepted,true);
+const service=await browser.newPage();await service.goto('https://galia-espanol-studio.micsonwilktaywilsamu.chatgpt.site/api/health');
+const auth=await service.evaluate(async()=>{const a=await fetch('/api/leads');const b=await fetch('/api/leads',{headers:{'oai-authenticated-user-id':'spoof','oai-authenticated-user-email':'micsonwilktaywilsamu1983@outlook.com'}});return {anonymous:a.status,spoof:b.status};});assert.deepEqual(auth,{anonymous:401,spoof:401});
+await page.setViewportSize({width:390,height:844});await page.goto(url);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:'outputs/live-mobile.png'});
+assert.deepEqual(errors,[]);await browser.close();console.log(JSON.stringify({site:url,liveRequest:data.id,anonymousRead:auth.anonymous,spoofedRead:auth.spoof,desktop:'passed',mobile:'passed',runtimeErrors:errors.length}));

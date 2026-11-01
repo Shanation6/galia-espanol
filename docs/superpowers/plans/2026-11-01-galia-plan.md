@@ -12,17 +12,17 @@ Spec: ../specs/2026-11-01-galia-design.md
 - Public HTML remains readable without motion; no mobile horizontal overflow.
 
 ## Task 1: Lead contract and service
-- [ ] Write Node tests for validation, consent, owner auth, CORS, idempotency and status allowlist; observe initial failure.
-- [ ] Implement worker with schema migration, public POST, protected list/PATCH and owner admin route.
-- [ ] Run tests and package/deploy Sites backend; verify anonymous API denial.
+- [x] Write Node tests for validation, consent, owner auth, CORS, idempotency and status allowlist; observe initial failure.
+- [x] Implement worker with schema migration, public POST, protected list/PATCH and owner admin route.
+- [x] Run tests and package/deploy Sites backend; verify anonymous API denial.
 
 ## Task 2: Visitor site and admin
-- [ ] Create semantic editorial layout, real assets, responsive CSS, reduced-motion scroll behavior.
-- [ ] Implement phrase demo and two-step form with errors/retry/success.
-- [ ] Create owner admin with search, statuses, notes and safe CSV export.
-- [ ] Run desktop/mobile browser checks, validate one full lead lifecycle, repair failures.
+- [x] Create semantic editorial layout, real assets, responsive CSS, reduced-motion scroll behavior.
+- [x] Implement phrase demo and two-step form with errors/retry/success.
+- [x] Create owner admin with search, statuses, notes and safe CSV export.
+- [x] Run desktop/mobile browser checks, validate one full lead lifecycle, repair failures.
 
 ## Task 3: Publish
-- [ ] Review code/security and verify no credentials or leads are tracked.
-- [ ] Create GitHub repository, commit source and publish Pages from docs/ output.
-- [ ] Verify live Pages form and admin integration; return both live links.
+- [x] Review code/security and verify no credentials or leads are tracked.
+- [x] Create GitHub repository, commit source and publish Pages from docs/ output.
+- [x] Verify live Pages form and admin integration; return both live links.
